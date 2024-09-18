@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>SignWave</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/styles.css') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename= 'img/favicon.ico') }}" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename= 'js/postHandler.js') }}"></script>
+</head>
+<style>
+    .image-box {
+        border: 1px solid #000;
+        padding: 10px;
+        width: 300px; /* Adjust the width as needed */
+        height: 150px; /* Adjust the height as needed */
+        box-sizing: border-box;
+        text-align: center; /* Center the image horizontally */
+    }
+    #generated-image {
+        max-width: 100%;
+        height: auto;
+    }
+    /* Additional styles to lock the page for mobile */
+    body, html {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    .flex-container {
+        display: flex;
+        flex-direction: column; /* Changed to column to stack the boxes vertically */
+        height: 100vh;
+        overflow: hidden;
+    }
+    .left-box, .right-box {
+        flex: 1;
+        overflow: auto;
+    }
+    .message {
+        width: 200px;
+        height: 50px;
+    }
+</style>
+
+<body>
+    <div class="flex-container">
+        <div class="left-box">
+            <h2 id="label">N/A</h2>
+            <div id="container"></div>
+        </div>
+        <div class="right-box">
+            <div class="box">
+                <div class="image-box">
+                    <img id="generated-image" src="#" alt="Generated image will appear here." />
+                </div>
+            </div>
+            <div class="box" style="margin-bottom: 20px;">
+                <form id="inputForm">
+                    <textarea class="message" id="message" name="message" placeholder="Enter the text to translate here!"></textarea>
+                    <button class="light" type="submit" style="display: block; margin: 10px auto;">Submit</button>
+                    <button type="button" id="mic-btn" class="light" style="display: block; margin: 10px auto;">
+                        🎤 Start Speaking
+                    </button>
+                </form>
+                <div class="foot">
+                    <a href="https://github.com/tan-ad/SignWave" class="socials"><img src="static/img/github-icon.svg" style="width:20px;height:20px;"></img></a>
+                    <a href="https://devpost.com/software/speechtosign" class="socials"><img src="static/img/devpost-icon.svg" style="width:20px;height:20px;"></img></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename= 'js/main.js') }}"></script>
+
+    <script>
+        // Check if the browser supports the Web Speech API
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            const micBtn = document.getElementById('mic-btn');
+            const messageInput = document.getElementById('message');
+
+            micBtn.addEventListener('click', function () {
+                recognition.start();
+                micBtn.textContent = '🎤 Listening...';
+            });
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                micBtn.textContent = '🎤 Start Speaking';
+            };
+
+            recognition.onerror = function (event) {
+                console.error('Speech recognition error detected: ' + event.error);
+                micBtn.textContent = '🎤 Start Speaking';
+            };
+
+            recognition.onend = function () {
+                micBtn.textContent = '🎤 Start Speaking';
+            };
+        } else {
+            alert('Your browser does not support speech recognition.');
+        }
+
+        // Handle form submission
+        document.getElementById('inputForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const query = document.getElementById('message').value;
+            fetch('/generate_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.image_url) {
+                    document.getElementById('generated-image').src = data.image_url;
+                } else {
+                    console.error('Error generating image:', data.error);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+
+</html>
